@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Timeline - Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            min-height: 100vh;
+        }
+
+        /* Header Styles */
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            color: #e74c3c;
+            animation: heartbeat 2s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .username {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* New Post Section */
+        .new-post-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .new-post-card {
+            width: 100%;
+        }
+
+        .post-header {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .post-input-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .post-input {
+            width: 100%;
+            border: 2px solid #e1e8ed;
+            border-radius: 15px;
+            padding: 20px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .post-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .post-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .topic-suggestions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .topic-tag {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .topic-tag:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .post-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .post-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Timeline Section */
+        .timeline-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .timeline-header h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .timeline-filters {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: 2px solid #e1e8ed;
+            color: #666;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active,
+        .filter-btn:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #667eea;
+            color: white;
+        }
+
+        /* Timeline Posts */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .post {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .post:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .post::before {
+            content: '';
+            position: absolute;
+            left: -15px;
+            top: 50px;
+            width: 3px;
+            height: calc(100% - 50px);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .quem {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .quando {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .onde {
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .que {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .linha {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .linha:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Post Actions */
+        .post-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+
+        .action-btn i {
+            font-size: 1rem;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .sidebar-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-section h3 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            transition: background-color 0.3s ease;
+        }
+
+        .activity-item:hover {
+            background: #f8f9fa;
+        }
+
+        .activity-icon {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .activity-user {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        .activity-action {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .activity-time {
+            color: #999;
+            font-size: 0.8rem;
+        }
+
+        /* Trending Topics */
+        .trending-topics {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .topic-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 12px;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .topic-item:hover {
+            background: #f8f9fa;
+        }
+
+        .topic-name {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+
+        .topic-count {
+            color: #666;
+            font-size: 0.8rem;
+            background: #e1e8ed;
+            padding: 4px 8px;
+            border-radius: 10px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .sidebar {
+                order: -1;
+                grid-column: 1 / -1;
+            }
+            
+            .sidebar-section {
+                display: inline-block;
+                width: calc(50% - 15px);
+                margin-right: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                gap: 15px;
+            }
+            
+            .header {
+                padding: 15px 20px;
+            }
+            
+            .logo {
+                font-size: 1.5rem;
+            }
+            
+            .new-post-section,
+            .timeline-section,
+            .sidebar-section {
+                padding: 20px;
+            }
+            
+            .post-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .topic-suggestions {
+                justify-content: center;
+            }
+            
+            .timeline-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .timeline-filters {
+                justify-content: center;
+            }
+            
+            .sidebar-section {
+                width: 100%;
+                margin-right: 0;
+            }
+            
+            .post::before {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .post-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .user-avatar {
+                align-self: flex-start;
+            }
+            
+            .topic-suggestions {
+                gap: 8px;
+            }
+            
+            .topic-tag {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-heart"></i>
+                    Vibe
+                </h1>
+                <div class="user-info">
+                    <span class="username">rubis</span>
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- New Post Area -->
+            <section class="new-post-section">
+                <div class="new-post-card">
+                    <div class="post-header">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="post-input-container">
+                            <textarea 
+                                id="newPostContent" 
+                                class="post-input" 
+                                placeholder="O que você está fazendo agora? Use tópicos como: lendo:, ouvindo:, jogando:, etc."
+                                rows="3"
+                            ></textarea>
+                            <div class="post-actions">
+                                <div class="topic-suggestions">
+                                    <span class="topic-tag" data-topic="lendo">lendo:</span>
+                                    <span class="topic-tag" data-topic="ouvindo">ouvindo:</span>
+                                    <span class="topic-tag" data-topic="jogando">jogando:</span>
+                                    <span class="topic-tag" data-topic="assistindo">assistindo:</span>
+                                    <span class="topic-tag" data-topic="comendo">comendo:</span>
+                                    <span class="topic-tag" data-topic="preocupando">preocupando:</span>
+                                </div>
+                                <button class="post-button" onclick="submitPost()">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Postar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timeline Feed -->
+            <section class="timeline-section">
+                <div class="timeline-header">
+                    <h2>Timeline</h2>
+                    <div class="timeline-filters">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="following">Seguindo</button>
+                    </div>
+                </div>
+
+                <div class="timeline" id="timeline">
+                    <!-- Posts de exemplo -->
+                    <div class="post">
+                        <div class="post-header">
+                            <div class="quem">lari</div>
+                            <div class="quando">5 min atrás</div>
+                        </div>
+                        <div class="que">
+                            <div class="linha"><strong>lendo:</strong> murder in mesopotamia</div>
+                            <div class="linha"><strong>ouvindo:</strong> dupê</div>
+                            <div class="linha"><strong>jogando:</strong> monstruosas</div>
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-btn" onclick="likePost(this)">
+                                <i class="far fa-heart"></i>
+                                <span>3</span>
+                            </button>
+                            <button class="action-btn" onclick="commentPost(this)">
+                                <i class="far fa-comment"></i>
+                                <span>1</span>
+                            </button>
+                            <button class="action-btn" onclick="sharePost(this)">
+                                <i class="far fa-share-square"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="post">
+                        <div class="post-header">
+                            <div class="quem">maria</div>
+                            <div class="quando">15 min atrás</div>
+                            <div class="onde">São Paulo</div>
+                        </div>
+                        <div class="que">
+                            <div class="linha"><strong>assistindo:</strong> Stranger Things</div>
+                            <div class="linha"><strong>comendo:</strong> pizza</div>
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-btn" onclick="likePost(this)">
+                                <i class="far fa-heart"></i>
+                                <span>7</span>
+                            </button>
+                            <button class="action-btn" onclick="commentPost(this)">
+                                <i class="far fa-comment"></i>
+                                <span>2</span>
+                            </button>
+                            <button class="action-btn" onclick="sharePost(this)">
+                                <i class="far fa-share-square"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="post">
+                        <div class="post-header">
+                            <div class="quem">joão</div>
+                            <div class="quando">30 min atrás</div>
+                        </div>
+                        <div class="que">
+                            <div class="linha"><strong>preocupando:</strong> prova de amanhã</div>
+                            <div class="linha"><strong>ouvindo:</strong> podcast sobre programação</div>
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-btn" onclick="likePost(this)">
+                                <i class="far fa-heart"></i>
+                                <span>5</span>
+                            </button>
+                            <button class="action-btn" onclick="commentPost(this)">
+                                <i class="far fa-comment"></i>
+                                <span>0</span>
+                            </button>
+                            <button class="action-btn" onclick="sharePost(this)">
+                                <i class="far fa-share-square"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Atividade Recente</h3>
+                <div class="activity-feed">
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-user">lari</span>
+                            <span class="activity-action">começou a seguir você</span>
+                            <span class="activity-time">2 min atrás</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-music"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-user">maria</span>
+                            <span class="activity-action">está ouvindo música</span>
+                            <span class="activity-time">5 min atrás</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Trending Topics</h3>
+                <div class="trending-topics">
+                    <div class="topic-item">
+                        <span class="topic-name">#lendo</span>
+                        <span class="topic-count">42 posts</span>
+                    </div>
+                    <div class="topic-item">
+                        <span class="topic-name">#ouvindo</span>
+                        <span class="topic-count">38 posts</span>
+                    </div>
+                    <div class="topic-item">
+                        <span class="topic-name">#jogando</span>
+                        <span class="topic-count">25 posts</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // Funcionalidades JavaScript básicas
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Topic tag suggestions
+            document.querySelectorAll('.topic-tag').forEach(tag => {
+                tag.addEventListener('click', function() {
+                    const topic = this.getAttribute('data-topic');
+                    insertTopic(topic);
+                });
+            });
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    setActiveFilter(this);
+                });
+            });
+
+            // Auto-resize textarea
+            const textarea = document.getElementById('newPostContent');
+            if (textarea) {
+                textarea.addEventListener('input', autoResize);
+            }
+        }
+
+        function insertTopic(topic) {
+            const textarea = document.getElementById('newPostContent');
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(cursorPos);
+            
+            const isNewLine = cursorPos === 0 || textBefore.endsWith('\n');
+            const insertText = isNewLine ? `${topic} ` : `\n${topic} `;
+            
+            textarea.value = textBefore + insertText + textAfter;
+            textarea.selectionStart = textarea.selectionEnd = cursorPos + insertText.length;
+            textarea.focus();
+            
+            autoResize.call(textarea);
+        }
+
+        function autoResize() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        }
+
+        function setActiveFilter(activeBtn) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            activeBtn.classList.add('active');
+        }
+
+        function submitPost() {
+            const textarea = document.getElementById('newPostContent');
+            const content = textarea.value.trim();
+            
+            if (!content) {
+                alert('Por favor, escreva algo antes de postar!');
+                return;
+            }
+            
+            const topics = ['lendo', 'ouvindo', 'jogando', 'assistindo', 'comendo', 'preocupando', 'namorando', 'cobiçando'];
+            const hasValidTopic = topics.some(topic => content.includes(topic + ':'));
+            
+            if (!hasValidTopic) {
+                alert('Use pelo menos um tópico válido (ex: lendo:, ouvindo:, etc.)');
+                return;
+            }
+            
+            const newPost = createPostElement('rubis', new Date(), '', content);
+            const timeline = document.getElementById('timeline');
+            timeline.insertBefore(newPost, timeline.firstChild);
+            
+            textarea.value = '';
+            textarea.style.height = 'auto';
+            
+            alert('Post criado com sucesso!');
+        }
+
+        function createPostElement(quem, quando, onde, que) {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post';
+            
+            const formattedTime = formatTime(quando);
+            const formattedContent = formatContent(que);
+            
+            postDiv.innerHTML = `
+                <div class="post-header">
+                    <div class="quem">${quem}</div>
+                    <div class="quando">${formattedTime}</div>
+                    ${onde ? `<div class="onde">${onde}</div>` : ''}
+                </div>
+                <div class="que">
+                    ${formattedContent}
+                </div>
+                <div class="post-actions">
+                    <button class="action-btn" onclick="likePost(this)">
+                        <i class="far fa-heart"></i>
+                        <span>0</span>
+                    </button>
+                    <button class="action-btn" onclick="commentPost(this)">
+                        <i class="far fa-comment"></i>
+                        <span>0</span>
+                    </button>
+                    <button class="action-btn" onclick="sharePost(this)">
+                        <i class="far fa-share-square"></i>
+                    </button>
+                </div>
+            `;
+            
+            return postDiv;
+        }
+
+        function formatTime(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            
+            if (minutes < 1) return 'Agora mesmo';
+            if (minutes < 60) return `${minutes} min atrás`;
+            
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatContent(content) {
+            const lines = content.split('\n');
+            const formattedLines = lines.map(line => {
+                if (line.includes(':')) {
+                    const [topic, ...rest] = line.split(':');
+                    const description = rest.join(':').trim();
+                    return `<div class="linha"><strong>${topic}:</strong> ${description}</div>`;
+                }
+                return `<div class="linha">${line}</div>`;
+            });
+            
+            return formattedLines.join('');
+        }
+
+        function likePost(button) {
+            const icon = button.querySelector('i');
+            const count = button.querySelector('span');
+            
+            if (icon.classList.contains('far')) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                icon.style.color = '#e74c3c';
+                count.textContent = parseInt(count.textContent) + 1;
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                icon.style.color = '';
+                count.textContent = parseInt(count.textContent) - 1;
+            }
+        }
+
+        function commentPost(button) {
+            const comment = prompt('Digite seu comentário:');
+            if (comment && comment.trim()) {
+                const count = button.querySelector('span');
+                count.textContent = parseInt(count.textContent) + 1;
+                alert('Comentário adicionado!');
+            }
+        }
+
+        function sharePost(button) {
+            alert('Link copiado para a área de transferência!');
+        }
+    </script>
+</body>
+</html> 

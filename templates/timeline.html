@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Timeline</title>
+    <link rel="stylesheet" href="timeline.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-heart"></i>
+                    Vibe
+                </h1>
+                <div class="user-info">
+                    <span class="username">rubis</span>
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- New Post Area -->
+            <section class="new-post-section">
+                <div class="new-post-card">
+                    <div class="post-header">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="post-input-container">
+                            <textarea 
+                                id="newPostContent" 
+                                class="post-input" 
+                                placeholder="O que você está fazendo agora? Use tópicos como: lendo:, ouvindo:, jogando:, etc."
+                                rows="3"
+                            ></textarea>
+                            <div class="post-actions">
+                                <div class="topic-suggestions">
+                                    <span class="topic-tag" data-topic="lendo">lendo:</span>
+                                    <span class="topic-tag" data-topic="ouvindo">ouvindo:</span>
+                                    <span class="topic-tag" data-topic="jogando">jogando:</span>
+                                    <span class="topic-tag" data-topic="assistindo">assistindo:</span>
+                                    <span class="topic-tag" data-topic="comendo">comendo:</span>
+                                    <span class="topic-tag" data-topic="preocupando">preocupando:</span>
+                                </div>
+                                <button class="post-button" onclick="submitPost()">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Postar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timeline Feed -->
+            <section class="timeline-section">
+                <div class="timeline-header">
+                    <h2>Timeline</h2>
+                    <div class="timeline-filters">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="following">Seguindo</button>
+                    </div>
+                </div>
+
+                <div class="timeline" id="timeline">
+                    <!-- Posts will be dynamically inserted here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h3>Atividade Recente</h3>
+                <div class="activity-feed">
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-user">lari</span>
+                            <span class="activity-action">começou a seguir você</span>
+                            <span class="activity-time">2 min atrás</span>
+                        </div>
+                    </div>
+                    <div class="activity-item">
+                        <div class="activity-icon">
+                            <i class="fas fa-music"></i>
+                        </div>
+                        <div class="activity-content">
+                            <span class="activity-user">maria</span>
+                            <span class="activity-action">está ouvindo música</span>
+                            <span class="activity-time">5 min atrás</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Trending Topics</h3>
+                <div class="trending-topics">
+                    <div class="topic-item">
+                        <span class="topic-name">#lendo</span>
+                        <span class="topic-count">42 posts</span>
+                    </div>
+                    <div class="topic-item">
+                        <span class="topic-name">#ouvindo</span>
+                        <span class="topic-count">38 posts</span>
+                    </div>
+                    <div class="topic-item">
+                        <span class="topic-name">#jogando</span>
+                        <span class="topic-count">25 posts</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="timeline.js"></script>
+</body>
+</html> 
