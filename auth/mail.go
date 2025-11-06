@@ -34,6 +34,13 @@ type SMTPGmail struct {
 	From     string
 }
 
+type TesteGmail struct{}
+
+func (t TesteGmail) Send(to, subject, body string) bool {
+	fmt.Printf("To: %s\nSubject: %s\n\n%s\n", to, subject, body)
+	return true
+}
+
 func (s *SMTPGmail) Send(to, subject, body string) bool {
 	auth := smtp.PlainAuth("", s.From, s.Password, "smtp.gmail.com")
 	emailMsg := fmt.Sprintf("To: %s\r\n"+"Subject: %s\r\n"+"\r\n"+"%s\r\n", to, subject, body)

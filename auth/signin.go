@@ -2,8 +2,6 @@ package auth
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,42 +35,34 @@ func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer
 		return nil
 	}
 	return &SigninManager{
-		pending:   make([]*Signerin, 0),
-		passwords: passwords,
-		Gateway:   gateway,
-		mail:      &SMTPManager{Token: token, Mail: mail, Templates: templates},
-		Granted:   make(map[string]crypto.Token),
+		//pending:   make([]*Signerin, 0),
+		Passwords: passwords,
+		//Gateway:   gateway,
+		Mail:    &SMTPManager{Token: token, Mail: mail, Templates: templates},
+		Granted: make(map[string]crypto.Token),
 	}
 }
 
 type Associater interface {
-	Has(handle string) (crypto.Token, bool)
+	//Has(handle string) (crypto.Token, bool)
 	Invite(handle string, token crypto.Token) error
 	AppName() string
 	AttorneyToken() crypto.Token
 }
 
 type SigninManager struct {
-	safe          int // for optional direct onboarding
-	pending       []*Signerin
-	passwords     PasswordManager
-	cookies       *CookieStore
-	mail          *SMTPManager
-	Gateway       Gateway
-	Granted       map[string]crypto.Token
-	Credentials   crypto.PrivateKey
-	Confirm       chan string
-	Members       Associater
-	SafeAddress   string
-	SafeAPIAddres string
+	Passwords PasswordManager
+	Cookies   *CookieStore
+	Mail      *SMTPManager
+	//Gateway       Gateway
+	Granted        map[string]crypto.Token
+	Credentials    crypto.PrivateKey
+	Members        Associater
+	SafeAddress    string
+	SafeAPIAddress string
 }
 
 func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
-	if s.safe == 0 {
-		log.Println("PANIC BUG: OnboardSigner called with nil safe")
-		return false
-	}
-
 	data := safe.UserRequest{
 		Handle:        handle,
 		Email:         email,
@@ -85,7 +75,7 @@ func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
 		log.Println("error marshalling JSON:", err)
 		return false
 	}
-	resp, err := http.Post(s.SafeAPIAddres, "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(s.SafeAPIAddress, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		log.Println("error sending onboarding request:", err)
 		return false
@@ -127,7 +117,7 @@ func (s *SigninManager) CheckGrant(handle string) error {
 	if err != nil {
 		return fmt.Errorf("error marshalling JSON:%s", err)
 	}
-	resp, err := http.Post(fmt.Sprintf("%s/attorney", s.SafeAPIAddres), "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(fmt.Sprintf("%s/attorney", s.SafeAPIAddress), "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error sending onboarding request: %s", err)
 	}
@@ -155,78 +145,37 @@ func (s *SigninManager) CheckGrant(handle string) error {
 }
 
 func (s *SigninManager) RequestReset(user crypto.Token, email, domain string) bool {
-	if !s.passwords.HasWithEmail(user, email) {
+	if !s.Passwords.HasWithEmail(user, email) {
 		return false
 	}
-	reset := s.passwords.AddReset(user, email)
+	reset := s.Passwords.AddReset(user, email)
 	url := fmt.Sprintf("%s/r/%s", domain, reset)
 	if reset == "" {
 		return false
 	}
-	s.mail.SendReset(email, url, nil)
+	s.Mail.SendReset(email, url, nil)
 	return true
 }
 
 func (s *SigninManager) Reset(user crypto.Token, url, password string) bool {
-	return s.passwords.DropReset(user, url, password)
+	return s.Passwords.DropReset(user, url, password)
 }
 
 func (s *SigninManager) Check(user crypto.Token, password string) bool {
 	hashed := crypto.Hasher(append(user[:], []byte(password)...))
-	return s.passwords.Check(user, hashed)
+	return s.Passwords.Check(user, hashed)
 }
 
 func (s *SigninManager) Set(user crypto.Token, password string, email string) {
 	hashed := crypto.Hasher(append(user[:], []byte(password)...))
-	s.passwords.Set(user, hashed, email)
+	s.Passwords.Set(user, hashed, email)
 }
 
 func (s *SigninManager) DirectReset(user crypto.Token, newpassword string) bool {
 	newhashed := crypto.Hasher(append(user[:], []byte(newpassword)...))
-	return s.passwords.Reset(user, newhashed)
+	return s.Passwords.Reset(user, newhashed)
 }
 
 func (s *SigninManager) Has(token crypto.Token) bool {
-	return s.passwords.Has(token)
-}
-
-func (s *SigninManager) AddSigner(handle, email string, token *crypto.Token) {
-	signer := &Signerin{}
-	for _, pending := range s.pending {
-		if signer.Handle == handle {
-			signer = pending
-		}
-	}
-	signer.Handle = handle
-	signer.Email = email
-	t, _ := crypto.RandomAsymetricKey()
-	signer.FingerPrint = crypto.EncodeHash(crypto.HashToken(t))
-	signer.TimeStamp = time.Now()
-	s.mail.SendSigninEmail(handle, email, signer.FingerPrint, token == nil, nil)
-	s.pending = append(s.pending, signer)
-}
-
-func randomPassword() string {
-	bytes := make([]byte, 10)
-	rand.Read(bytes)
-	return base64.StdEncoding.EncodeToString(bytes)
-}
-
-func (s *SigninManager) RevokeAttorney(handle string) {
-	delete(s.Granted, handle)
-}
-
-func (s *SigninManager) GrantAttorney(token crypto.Token, handle, fingerprint string) {
-	for n, signer := range s.pending {
-		if signer.Handle == handle && signer.FingerPrint == fingerprint {
-			passwd := randomPassword()
-			s.Set(token, passwd, signer.Email)
-			if s.Confirm != nil {
-				s.Confirm <- handle
-			}
-			s.mail.SendPasswordEmail(signer.Handle, signer.Email, passwd, nil)
-			s.pending = append(s.pending[:n], s.pending[n+1:]...)
-			s.Granted[handle] = token
-		}
-	}
+	return s.Passwords.Has(token)
 }

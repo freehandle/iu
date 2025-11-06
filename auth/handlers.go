@@ -21,7 +21,7 @@ func newCookie(name, value string) *http.Cookie {
 }
 
 func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
-	_, ok := s.Members.Has(handle)
+	_, ok := s.Granted[handle]
 	if !ok {
 		return nil, fmt.Errorf("user not found")
 	}
@@ -33,13 +33,16 @@ func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
 	return newCookie(s.Members.AppName(), cookie), nil
 }
 
-func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, error) {
+func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, string, error) {
 	if err := r.ParseForm(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	handle := r.FormValue("handle")
 	password := r.FormValue("password")
-	token, ok := s.Members.Has(handle)
+	token, ok := s.Granted[handle] //s.Members.Has(handle)
+	fmt.Println("handle:", handle)
+	fmt.Println("password:", password)
+	fmt.Println("token:", token)
 	if !ok || !s.Check(token, password) {
 		var valid error
 		if token, ok := s.Granted[handle]; ok {
@@ -48,16 +51,16 @@ func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, error
 			}
 		}
 		if valid != nil {
-			return nil, fmt.Errorf("pendente de aprovação pelo usuário: %s", valid)
+			return nil, handle, fmt.Errorf("pendente de aprovação pelo usuário: %s", valid)
 		} else {
 			token, ok := s.Granted[handle]
 			if ok {
 				s.Members.Invite(handle, token)
 			} else {
-				return nil, fmt.Errorf("erro interno ao recuperar token concedido")
+				return nil, handle, fmt.Errorf("erro interno ao recuperar token concedido")
 			}
 		}
 	}
 	cookie, err := s.CreateSession(handle)
-	return cookie, err
+	return cookie, handle, err
 }
