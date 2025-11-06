@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"slices"
 	"strings"
@@ -39,6 +40,7 @@ func (v *VibeApp) Rank(usuario string) ([]*Publicação, []*Relacionamento) {
 				seguindo = append(seguindo, relacionamento.Com())
 			}
 		}
+	}
 	seguindo := v.seguindo[usuario]
 	if len(seguindo) == 0 {
 		return nil, seguidores
@@ -103,3 +105,4 @@ func (l *VibeLayout) Render(posts []*Publicação) string {
 	print(html)
 	return html
 }
+*/

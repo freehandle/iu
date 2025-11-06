@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"html/template"
 	"net/http"
@@ -258,3 +259,4 @@ func runTemplateExample() {
 		panic(err)
 	}
 }
+*/

@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"time"
 )
@@ -63,4 +64,9 @@ func main() {
 	}
 
 	vibeappp.Run(8000)
+}
+*/
+
+func main() {
+
 }

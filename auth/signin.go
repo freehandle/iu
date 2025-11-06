@@ -45,15 +45,26 @@ func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer
 	}
 }
 
+type Associater interface {
+	Has(handle string) (crypto.Token, bool)
+	Invite(handle string, token crypto.Token) error
+	AppName() string
+	AttorneyToken() crypto.Token
+}
+
 type SigninManager struct {
-	safe        int // for optional direct onboarding
-	pending     []*Signerin
-	passwords   PasswordManager
-	mail        *SMTPManager
-	Gateway     Gateway
-	Granted     map[string]crypto.Token
-	Credentials crypto.PrivateKey
-	Confirm     chan string
+	safe          int // for optional direct onboarding
+	pending       []*Signerin
+	passwords     PasswordManager
+	cookies       *CookieStore
+	mail          *SMTPManager
+	Gateway       Gateway
+	Granted       map[string]crypto.Token
+	Credentials   crypto.PrivateKey
+	Confirm       chan string
+	Members       Associater
+	SafeAddress   string
+	SafeAPIAddres string
 }
 
 func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
@@ -62,13 +73,19 @@ func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
 		return false
 	}
 
-	data := safe.UserRequest{Handle: handle, Email: email, Password: passwd}
+	data := safe.UserRequest{
+		Handle:        handle,
+		Email:         email,
+		Password:      passwd,
+		App:           s.Members.AppName(),
+		AttorneyToken: s.Members.AttorneyToken().String(),
+	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		log.Println("error marshalling JSON:", err)
 		return false
 	}
-	resp, err := http.Post(fmt.Sprintf("http://localhost:%d", s.safe), "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(s.SafeAPIAddres, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		log.Println("error sending onboarding request:", err)
 		return false
@@ -89,41 +106,52 @@ func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
 		return false
 	}
 	token = crypto.TokenFromString(response.Token)
-	fmt.Println("Onboarded user with token:", token.String(), response.Token)
-	grant := safe.GrantRequest{
-		Handle:        handle,
-		AttorneyToken: s.Credentials.PublicKey().String(),
-		Hash:          crypto.EncodeHash(crypto.HashToken(token)),
-	}
-	jsonData, err = json.Marshal(grant)
-	if err != nil {
-		log.Println("error marshalling JSON:", err)
-		return false
-	}
-	resp, err = http.Post(fmt.Sprintf("http://localhost:%d/grant", s.safe), "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		log.Println("error sending onboarding request:", err)
-		return false
-	}
-	body, err = io.ReadAll(resp.Body)
-	if err != nil {
-		log.Println("error reading onboarding response body:", err)
-		return false
-	}
-	if err := json.Unmarshal(body, &response); err != nil {
-		log.Println("error unmarshalling onboarding response:", err)
-		return false
-	}
-	if resp.Status != "200 OK" {
-		log.Println("error granting power of attorney:", response.Message)
-		return false
-	} else {
-		log.Println("success granting power of attorney:", response.Message)
-	}
+	fmt.Println("Onboarded user with token:", token.String())
 	s.Set(token, passwd, email)
 	s.Granted[handle] = token
-	s.mail.SendWellcome(handle, email, nil)
+	if response.Status != "existente" {
+		if err := s.Members.Invite(handle, token); err != nil {
+			log.Println("error inviting user to members:", err)
+			return false
+		}
+	}
 	return true
+}
+
+func (s *SigninManager) CheckGrant(handle string) error {
+	req := safe.AttorneyRequest{
+		Handle:        handle,
+		AttorneyToken: s.Members.AttorneyToken().Hex(),
+	}
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("error marshalling JSON:%s", err)
+	}
+	resp, err := http.Post(fmt.Sprintf("%s/attorney", s.SafeAPIAddres), "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("error sending onboarding request: %s", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading onboarding response body: %s", err)
+	}
+	var response safe.APIResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return fmt.Errorf("error unmarshalling onboarding response: %s", err)
+	}
+	fmt.Println("Response status:", resp.Status)
+	if resp.Status != "200 OK" {
+		return fmt.Errorf("error onboarding user: %s", response.Message)
+	}
+	if response.Status == "Granted" {
+		token := crypto.TokenFromString(response.Token)
+		if err := s.Members.Invite(handle, token); err != nil {
+			return fmt.Errorf("error inviting user to members: %s", err)
+		}
+		s.Granted[handle] = token
+		return nil
+	}
+	return fmt.Errorf("access not granted")
 }
 
 func (s *SigninManager) RequestReset(user crypto.Token, email, domain string) bool {
