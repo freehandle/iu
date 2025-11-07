@@ -20,6 +20,17 @@ func newCookie(name, value string) *http.Cookie {
 	}
 }
 
+func (s *SigninManager) SessionUser(r *http.Request) string {
+	cookie, err := r.Cookie(s.Members.AppName())
+	if err != nil {
+		return ""
+	}
+	if handle, ok := s.Cookies.Get(cookie.Value); ok {
+		return handle
+	}
+	return ""
+}
+
 func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
 	_, ok := s.Granted[handle]
 	if !ok {
@@ -30,6 +41,7 @@ func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
 		return nil, fmt.Errorf("error generating session cookie: %v", err)
 	}
 	cookie := hex.EncodeToString(seed)
+	s.Cookies.Set(handle, cookie, 0)
 	return newCookie(s.Members.AppName(), cookie), nil
 }
 

@@ -48,6 +48,7 @@ func (c *CookieStore) Clean(epoch uint64) {
 func (c *CookieStore) Get(cookie string) (string, bool) {
 	hash := c.session[cookie]
 	handle, ok := c.handles[hash]
+	fmt.Println("COOKIE STORE GET:", cookie, "HANDLE:", handle, "OK:", ok)
 	return handle, ok
 }
 
@@ -59,6 +60,7 @@ func (c *CookieStore) Set(handle string, cookie string, epoch uint64) bool {
 	hash := crypto.Hasher([]byte(handle))
 	c.handles[hash] = handle
 	c.session[cookie] = hash
+	fmt.Println("COOKIE STORE GET:", cookie, "HANDLE:")
 	epochEnd := epoch + cookieSessionDuration
 	c.sessionend[epochEnd] = append(c.sessionend[epochEnd], cookie)
 	position, ok := c.position[hash]
@@ -90,6 +92,7 @@ func OpenCokieStore(path string) (*CookieStore, error) {
 	position := 0
 	store := &CookieStore{
 		file:       file,
+		handles:    make(map[crypto.Hash]string),
 		session:    make(map[string]crypto.Hash),
 		sessionend: make(map[uint64][]string),
 		position:   make(map[crypto.Hash]int64),
