@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/freehandle/breeze/crypto"
 )
 
 const cookieLifeItemSeconds = 60 * 60 * 24 * 7 // 1 week
@@ -20,15 +22,17 @@ func newCookie(name, value string) *http.Cookie {
 	}
 }
 
-func (s *SigninManager) SessionUser(r *http.Request) string {
-	cookie, err := r.Cookie(s.Members.AppName())
+func (s *SigninManager) SessionUser(r *http.Request) (string, crypto.Token) {
+	cookie, err := r.Cookie(s.AppName)
 	if err != nil {
-		return ""
+		return "", crypto.ZeroToken
 	}
-	if handle, ok := s.Cookies.Get(cookie.Value); ok {
-		return handle
+	if token, ok := s.Cookies.Get(cookie.Value); ok {
+		if handle, ok := s.TokenToHandle[token]; ok {
+			return handle, token
+		}
 	}
-	return ""
+	return "", crypto.ZeroToken
 }
 
 func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
@@ -36,13 +40,17 @@ func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
 	if !ok {
 		return nil, fmt.Errorf("user not found")
 	}
+	token, ok := s.HandleToToken[handle]
+	if !ok {
+		return nil, fmt.Errorf("user not member of the handles network")
+	}
 	seed := make([]byte, 32)
 	if n, err := rand.Read(seed); n != 32 || err != nil {
 		return nil, fmt.Errorf("error generating session cookie: %v", err)
 	}
 	cookie := hex.EncodeToString(seed)
-	s.Cookies.Set(handle, cookie, 0)
-	return newCookie(s.Members.AppName(), cookie), nil
+	s.Cookies.Set(token, cookie, 0)
+	return newCookie(s.AppName, cookie), nil
 }
 
 func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, string, error) {
@@ -52,9 +60,6 @@ func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, strin
 	handle := r.FormValue("handle")
 	password := r.FormValue("password")
 	token, ok := s.Granted[handle] //s.Members.Has(handle)
-	fmt.Println("handle:", handle)
-	fmt.Println("password:", password)
-	fmt.Println("token:", token)
 	if !ok || !s.Check(token, password) {
 		var valid error
 		if token, ok := s.Granted[handle]; ok {

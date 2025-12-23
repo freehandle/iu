@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/freehandle/breeze/crypto"
+	"github.com/freehandle/brisa/util"
+	"github.com/freehandle/handles/attorney"
 	"github.com/freehandle/safe"
 )
 
@@ -29,6 +32,72 @@ type Gateway interface {
 	Epoch() uint64
 }
 
+type ManagerConfig struct {
+	Token     crypto.Token
+	Passwords PasswordManager
+	Mail      Mailer
+	Gateway   Gateway
+	Templates MessagesTemplates
+	Source    chan []byte
+}
+
+func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte) (*SigninManager, chan []byte) {
+	forward := make(chan []byte, 1)
+	manager := NewSigninManager(config.Token, config.Passwords, config.Mail, config.Gateway, config.Templates)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				close(forward)
+				return
+			case data, ok := <-source:
+				if !ok {
+					close(forward)
+					return
+				}
+				switch data[0] {
+				case 1:
+					kind := attorney.Kind(data[1:])
+					switch kind {
+					case attorney.JoinNetworkType:
+						if join := attorney.ParseJoinNetwork(data[1:]); join != nil {
+							manager.HandleToToken[join.Handle] = join.Author
+							manager.TokenToHandle[join.Author] = join.Handle
+						}
+					case attorney.GrantPowerOfAttorneyType:
+						if grant := attorney.ParseGrantPowerOfAttorney(data[1:]); grant != nil {
+							if grant.Attorney.Equal(config.Token) {
+								if handle, ok := manager.TokenToHandle[grant.Author]; ok {
+									manager.Granted[handle] = grant.Author
+								}
+							}
+						}
+					case attorney.RevokePowerOfAttorneyType:
+						if revoke := attorney.ParseRevokePowerOfAttorney(data[1:]); revoke != nil {
+							if revoke.Attorney.Equal(config.Token) {
+								if handle, ok := manager.TokenToHandle[revoke.Author]; ok {
+									delete(manager.Granted, handle)
+								}
+							}
+						}
+					case attorney.VoidType:
+						forward <- data
+					}
+				case 0:
+					if len(data) >= 9 {
+						epoch, _ := util.ParseUint64(data[1:], 1)
+						manager.Epoch = epoch
+					}
+					forward <- data
+				default:
+					forward <- data
+				}
+			}
+		}
+	}()
+	return manager, forward
+}
+
 func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer, gateway Gateway, templates MessagesTemplates) *SigninManager {
 	if gateway == nil {
 		log.Print("PANIC BUG: NewSigninManager called with nil gateway ")
@@ -38,8 +107,11 @@ func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer
 		//pending:   make([]*Signerin, 0),
 		Passwords: passwords,
 		//Gateway:   gateway,
-		Mail:    &SMTPManager{Token: token, Mail: mail, Templates: templates},
-		Granted: make(map[string]crypto.Token),
+		Mail:          &SMTPManager{Token: token, Mail: mail, Templates: templates},
+		Granted:       make(map[string]crypto.Token),
+		HandleToToken: make(map[string]crypto.Token),
+		TokenToHandle: make(map[crypto.Token]string),
+		Invitation:    make(map[crypto.Hash]struct{}),
 	}
 }
 
@@ -51,6 +123,9 @@ type Associater interface {
 }
 
 type SigninManager struct {
+	Epoch     uint64
+	AppName   string
+	AppToken  crypto.Token
 	Passwords PasswordManager
 	Cookies   *CookieStore
 	Mail      *SMTPManager
@@ -60,6 +135,9 @@ type SigninManager struct {
 	Members        Associater
 	SafeAddress    string
 	SafeAPIAddress string
+	HandleToToken  map[string]crypto.Token
+	TokenToHandle  map[crypto.Token]string
+	Invitation     map[crypto.Hash]struct{}
 }
 
 func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
@@ -178,4 +256,20 @@ func (s *SigninManager) DirectReset(user crypto.Token, newpassword string) bool 
 
 func (s *SigninManager) Has(token crypto.Token) bool {
 	return s.Passwords.Has(token)
+}
+
+func (s *SigninManager) Invite() string {
+	tk, _ := crypto.RandomAsymetricKey()
+	hash := crypto.HashToken(tk)
+	s.Invitation[hash] = struct{}{}
+	return hash.String()
+}
+
+func (s *SigninManager) Invited(hash string) bool {
+	if len(s.Granted) == 0 {
+		return true
+	}
+	parsed := crypto.DecodeHash(hash)
+	_, ok := s.Invitation[parsed]
+	return ok
 }
