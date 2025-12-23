@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/freehandle/breeze/crypto"
-	"github.com/freehandle/brisa/util"
+	"github.com/freehandle/breeze/util"
 	"github.com/freehandle/handles/attorney"
 	"github.com/freehandle/safe"
 )
@@ -182,6 +182,9 @@ func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
 			log.Println("error inviting user to members:", err)
 			return false
 		}
+	} else {
+		check := response.Verify
+		s.Mail.SendVerifyPOA(handle, s.AppName, email, check)
 	}
 	return true
 }

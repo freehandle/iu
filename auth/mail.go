@@ -23,6 +23,8 @@ type MessagesTemplates struct {
 	EmailPasswordMessageHeader string
 	PasswordMessage            string
 	PasswordMessageHeader      string
+	VerifyPOAHeader            string
+	VerifyPOA                  string
 }
 
 type Mailer interface {
@@ -82,6 +84,12 @@ func (s *SMTPManager) SendSigninEmail(handle, email, fingerprint string, without
 			confirm <- check
 		}
 	}()
+}
+
+func (s *SMTPManager) SendVerifyPOA(handle, app, email, msg string) bool {
+	body := fmt.Sprintf(s.Templates.VerifyPOA, handle, app, msg)
+	check := s.Mail.Send(email, s.Templates.VerifyPOAHeader, body)
+	return check
 }
 
 func (s *SMTPManager) SendPasswordEmail(handle, email, password string, confirm chan bool) {
