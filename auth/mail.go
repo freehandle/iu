@@ -36,6 +36,12 @@ type SMTPGmail struct {
 	From     string
 }
 
+type SMTPPlain struct {
+	Password    string
+	From        string
+	SMTPAddress string
+}
+
 type TesteGmail struct{}
 
 func (t TesteGmail) Send(to, subject, body string) bool {
@@ -45,6 +51,17 @@ func (t TesteGmail) Send(to, subject, body string) bool {
 
 func (s *SMTPGmail) Send(to, subject, body string) bool {
 	auth := smtp.PlainAuth("", s.From, s.Password, "smtp.gmail.com")
+	emailMsg := fmt.Sprintf("To: %s\r\n"+"Subject: %s\r\n"+"\r\n"+"%s\r\n", to, subject, body)
+	err := smtp.SendMail("smtp.gmail.com:587", auth, s.From, []string{to}, []byte(emailMsg))
+	if err != nil {
+		log.Printf("email sending error: %v", err)
+		return false
+	}
+	return true
+}
+
+func (s *SMTPPlain) Send(to, subject, body string) bool {
+	auth := smtp.PlainAuth("", s.From, s.Password, s.SMTPAddress)
 	emailMsg := fmt.Sprintf("To: %s\r\n"+"Subject: %s\r\n"+"\r\n"+"%s\r\n", to, subject, body)
 	err := smtp.SendMail("smtp.gmail.com:587", auth, s.From, []string{to}, []byte(emailMsg))
 	if err != nil {

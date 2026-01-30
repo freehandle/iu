@@ -184,7 +184,7 @@ func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
 		}
 	} else {
 		check := response.Verify
-		s.Mail.SendVerifyPOA(handle, s.AppName, email, check)
+		go s.Mail.SendVerifyPOA(handle, s.AppName, email, check)
 	}
 	return true
 }
