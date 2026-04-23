@@ -122,6 +122,25 @@ type Associater interface {
 	AttorneyToken() crypto.Token
 }
 
+// TODO IMPLEMENTAR LOGICA DO INVITE AQUI
+
+func (d *DefaultAssociater) AppName() string {
+	return d.AplicationName
+}
+
+func (d *DefaultAssociater) AttorneyToken() crypto.Token {
+	return d.AppToken
+}
+
+func (d *DefaultAssociater) Invite(handle string, token crypto.Token) error {
+	return nil
+}
+
+type DefaultAssociater struct {
+	AplicationName string
+	AppToken       crypto.Token
+}
+
 type SigninManager struct {
 	Epoch     uint64
 	AppName   string

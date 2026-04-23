@@ -62,7 +62,7 @@ func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, strin
 	token, ok := s.Granted[handle] //s.Members.Has(handle)
 	if !ok || !s.Check(token, password) {
 		var valid error
-		if token, ok := s.Granted[handle]; ok {
+		if token, ok := s.Granted[handle]; ok { //se passou pelo signin
 			if s.Check(token, password) {
 				valid = s.CheckGrant(handle)
 			}
