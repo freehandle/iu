@@ -1,6 +1,7 @@
 package credentials
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -28,25 +29,27 @@ import (
 type CredentialsMux struct {
 	Manager            *auth.SigninManager
 	Templates          *template.Template
-	Hostname           string // base URL, ex: "http://localhost:8030"
-	RedirectAfterLogin string // rota pós-login bem-sucedido, padrão "/"
-	SecureCookie       bool   // false para HTTP local, true para HTTPS produção
+	Hostname           string     // base URL, ex: "http://localhost:8030"
+	RedirectAfterLogin string     // rota pós-login bem-sucedido, padrão "/"
+	SecureCookie       bool       // false para HTTP local, true para HTTPS produção
 	Log                *InviteLog // nil desativa o registro de convites
 	Mux                *http.ServeMux
+	Endpoints          map[string]string
 }
 
 // View é o dado enviado aos templates de credenciais.
 type View struct {
-	AppName string
-	Error   string
-	Handle  string
-	Seed    string
-	URL     string
+	Hostname string
+	AppName  string
+	Error    string
+	Handle   string
+	Seed     string
+	URL      string
 }
 
 // New cria e registra todas as rotas no Mux interno.
 // logPath é o caminho do arquivo de texto de registro de convites; se vazio, o log é desativado.
-func New(manager *auth.SigninManager, templates *template.Template, hostname string, secureCookie bool, logPath string) *CredentialsMux {
+func New(manager *auth.SigninManager, endpoints map[string]string, templates *template.Template, hostname string, secureCookie bool, logPath string) *CredentialsMux {
 	var il *InviteLog
 	if logPath != "" {
 		var err error
@@ -63,18 +66,36 @@ func New(manager *auth.SigninManager, templates *template.Template, hostname str
 		SecureCookie:       secureCookie,
 		Log:                il,
 		Mux:                http.NewServeMux(),
+		Endpoints:          endpoints,
 	}
-	c.Mux.HandleFunc("/login", c.LoginHandler)
-	c.Mux.HandleFunc("/credentials", c.CredentialsHandler)
-	c.Mux.HandleFunc("/signin/", c.OnboardingHandler)
-	c.Mux.HandleFunc("/register", c.RegisterHandler)
-	c.Mux.HandleFunc("/invite", c.InviteHandler)
-	c.Mux.HandleFunc("/forgot", c.ForgotHandler)
-	c.Mux.HandleFunc("/resetrequest", c.ResetRequestHandler)
-	c.Mux.HandleFunc("/r/", c.ResetFromURLHandler)
-	c.Mux.HandleFunc("/reset", c.ResetHandler)
-	c.Mux.HandleFunc("/changepassword", c.ChangePasswordHandler)
-	c.Mux.HandleFunc("/signout", c.SignoutHandler)
+
+	for path, endpoint := range endpoints {
+		switch path {
+		case "login":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.LoginHandler)
+		case "credentials":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.CredentialsHandler)
+		case "signin":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s/", endpoint), c.OnboardingHandler)
+		case "register":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.RegisterHandler)
+		case "invite":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.InviteHandler)
+		case "forgot":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.ForgotHandler)
+		case "resetrequest":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.ResetRequestHandler)
+		case "r":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s/", endpoint), c.ResetFromURLHandler)
+		case "reset":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.ResetHandler)
+		case "changepassword":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.ChangePasswordHandler)
+		case "signout":
+			c.Mux.HandleFunc(fmt.Sprintf("/%s", endpoint), c.SignoutHandler)
+		}
+
+	}
 	return c
 }
 
@@ -92,14 +113,15 @@ func (c *CredentialsMux) setCookie(w http.ResponseWriter, cookie *http.Cookie) {
 
 // LoginHandler exibe o formulário de login.
 func (c *CredentialsMux) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	c.render(w, "login.html", View{AppName: c.Manager.AppName})
+	c.render(w, fmt.Sprintf("%s.html", c.Endpoints["login"]), View{Hostname: c.Hostname, AppName: c.Manager.AppName})
 }
 
 // CredentialsHandler processa o formulário de login (POST /credentials).
 func (c *CredentialsMux) CredentialsHandler(w http.ResponseWriter, r *http.Request) {
 	cookie, _, err := c.Manager.CredentialsHandler(r)
+	fmt.Println("credentials cookie", cookie)
 	if err != nil {
-		c.render(w, "login.html", View{Error: err.Error(), AppName: c.Manager.AppName})
+		c.render(w, fmt.Sprintf("%s.html", c.Endpoints["login"]), View{Hostname: c.Hostname, Error: err.Error(), AppName: c.Manager.AppName})
 		return
 	}
 	c.setCookie(w, cookie)
@@ -111,16 +133,16 @@ func (c *CredentialsMux) OnboardingHandler(w http.ResponseWriter, r *http.Reques
 	seed := strings.TrimPrefix(r.URL.Path, "/signin/")
 	hash := crypto.DecodeHash(seed)
 	if _, ok := c.Manager.Invitation[hash]; ok || len(c.Manager.Invitation) == 0 {
-		c.render(w, "signin.html", View{Seed: seed, AppName: c.Manager.AppName})
+		c.render(w, fmt.Sprintf("%s.html", c.Endpoints["signin"]), View{Hostname: c.Hostname, Seed: seed, AppName: c.Manager.AppName})
 		return
 	}
-	c.render(w, "login.html", View{Error: "convite inválido", AppName: c.Manager.AppName})
+	c.render(w, fmt.Sprintf("%s.html", c.Endpoints["login"]), View{Hostname: c.Hostname, Error: "convite inválido", AppName: c.Manager.AppName})
 }
 
 // RegisterHandler processa o formulário de cadastro (POST /register).
 func (c *CredentialsMux) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		c.render(w, "signin.html", View{Error: "erro ao processar formulário", AppName: c.Manager.AppName})
+		c.render(w, fmt.Sprintf("%s.html", c.Endpoints["signin"]), View{Hostname: c.Hostname, Error: "erro ao processar formulário", AppName: c.Manager.AppName})
 		return
 	}
 	handle := r.FormValue("handle")
@@ -129,38 +151,38 @@ func (c *CredentialsMux) RegisterHandler(w http.ResponseWriter, r *http.Request)
 	seed := r.FormValue("seed")
 	hash := crypto.DecodeHash(seed)
 	if !c.Manager.OnboardSigner(handle, email, passwd) {
-		c.render(w, "signin.html", View{Error: "perfil já existente ou erro no cadastro", Seed: seed, AppName: c.Manager.AppName})
+		c.render(w, fmt.Sprintf("%s.html", c.Endpoints["signin"]), View{Hostname: c.Hostname, Error: "perfil já existente ou erro no cadastro", Seed: seed, AppName: c.Manager.AppName})
 		return
 	}
 	if c.Log != nil {
 		c.Log.RegistrarAceite(seed, handle)
 	}
 	delete(c.Manager.Invitation, hash)
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/%s", c.Endpoints["login"]), http.StatusSeeOther)
 }
 
 // InviteHandler gera um link de convite e o exibe (requer sessão ativa).
 func (c *CredentialsMux) InviteHandler(w http.ResponseWriter, r *http.Request) {
 	handle, _ := c.Manager.SessionUser(r)
 	if handle == "" {
-		c.render(w, "login.html", View{Error: "é preciso estar logado para convidar", AppName: c.Manager.AppName})
+		c.render(w, fmt.Sprintf("%s.html", c.Endpoints["login"]), View{Hostname: c.Hostname, Error: "é preciso estar logado para convidar", AppName: c.Manager.AppName})
 		return
 	}
 	seed := c.Manager.Invite()
 	if c.Log != nil {
 		c.Log.RegistrarConvite(seed, handle, c.Manager.AppName)
 	}
-	c.render(w, "invite.html", View{Seed: seed, Handle: handle, AppName: c.Manager.AppName})
+	c.render(w, fmt.Sprintf("%s.html", c.Endpoints["invite"]), View{Hostname: c.Hostname, Seed: seed, Handle: handle, AppName: c.Manager.AppName})
 }
 
 // ForgotHandler exibe o formulário "esqueci minha senha".
 func (c *CredentialsMux) ForgotHandler(w http.ResponseWriter, r *http.Request) {
-	c.render(w, "forgot.html", View{AppName: c.Manager.AppName})
+	c.render(w, fmt.Sprintf("%s.html", c.Endpoints["forgot"]), View{Hostname: c.Hostname, AppName: c.Manager.AppName})
 }
 
 // ResetRequestHandler processa o formulário "esqueci minha senha" e envia o email de reset.
 func (c *CredentialsMux) ResetRequestHandler(w http.ResponseWriter, r *http.Request) {
-	defer http.Redirect(w, r, "/login", http.StatusSeeOther)
+	defer http.Redirect(w, r, fmt.Sprintf("/%s", c.Endpoints["login"]), http.StatusSeeOther)
 	if err := r.ParseForm(); err != nil {
 		return
 	}
@@ -178,16 +200,16 @@ func (c *CredentialsMux) ResetFromURLHandler(w http.ResponseWriter, r *http.Requ
 	resetURL := strings.TrimPrefix(r.URL.Path, "/r/")
 	ok, token, _ := c.Manager.Passwords.HasReset(resetURL)
 	if !ok {
-		c.render(w, "login.html", View{Error: "link para troca de senha inválido", AppName: c.Manager.AppName})
+		c.render(w, fmt.Sprintf("%s.html", c.Endpoints["login"]), View{Hostname: c.Hostname, Error: "link para troca de senha inválido", AppName: c.Manager.AppName})
 		return
 	}
 	handle := c.Manager.TokenToHandle[token]
-	c.render(w, "reset.html", View{Handle: handle, URL: r.URL.Path, AppName: c.Manager.AppName})
+	c.render(w, fmt.Sprintf("%s.html", c.Endpoints["reset"]), View{Hostname: c.Hostname, Handle: handle, URL: r.URL.Path, AppName: c.Manager.AppName})
 }
 
 // ResetHandler processa o formulário de nova senha via link (POST /reset).
 func (c *CredentialsMux) ResetHandler(w http.ResponseWriter, r *http.Request) {
-	defer http.Redirect(w, r, "/login", http.StatusSeeOther)
+	defer http.Redirect(w, r, fmt.Sprintf("/%s", c.Endpoints["login"]), http.StatusSeeOther)
 	if err := r.ParseForm(); err != nil {
 		return
 	}
@@ -203,11 +225,11 @@ func (c *CredentialsMux) ResetHandler(w http.ResponseWriter, r *http.Request) {
 // ChangePasswordHandler exibe (GET) e processa (POST) a troca de senha autenticada.
 func (c *CredentialsMux) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		c.render(w, "changepassword.html", View{AppName: c.Manager.AppName})
+		c.render(w, "changepassword.html", View{Hostname: c.Hostname, AppName: c.Manager.AppName})
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		c.render(w, "changepassword.html", View{Error: "erro ao processar formulário", AppName: c.Manager.AppName})
+		c.render(w, "changepassword.html", View{Hostname: c.Hostname, Error: "erro ao processar formulário", AppName: c.Manager.AppName})
 		return
 	}
 	handle := r.FormValue("handle")
@@ -216,18 +238,18 @@ func (c *CredentialsMux) ChangePasswordHandler(w http.ResponseWriter, r *http.Re
 	repeatnew := r.FormValue("repeatnewpassword")
 	token, ok := c.Manager.HandleToToken[handle]
 	if !ok || !c.Manager.Check(token, oldpassword) {
-		c.render(w, "changepassword.html", View{Error: "credenciais incorretas", AppName: c.Manager.AppName})
+		c.render(w, "changepassword.html", View{Hostname: c.Hostname, Error: "credenciais incorretas", AppName: c.Manager.AppName})
 		return
 	}
 	if newpassword != repeatnew {
-		c.render(w, "changepassword.html", View{Error: "o campo das senhas novas não bate", AppName: c.Manager.AppName})
+		c.render(w, "changepassword.html", View{Hostname: c.Hostname, Error: "o campo das senhas novas não bate", AppName: c.Manager.AppName})
 		return
 	}
 	if !c.Manager.DirectReset(token, newpassword) {
-		c.render(w, "changepassword.html", View{Error: "não foi possível atualizar a senha", AppName: c.Manager.AppName})
+		c.render(w, "changepassword.html", View{Hostname: c.Hostname, Error: "não foi possível atualizar a senha", AppName: c.Manager.AppName})
 		return
 	}
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/%s", c.Endpoints["login"]), http.StatusSeeOther)
 }
 
 // SignoutHandler encerra a sessão do usuário e redireciona para "/".

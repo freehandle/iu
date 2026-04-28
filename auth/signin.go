@@ -55,6 +55,7 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 					close(forward)
 					return
 				}
+				fmt.Println("instrucao")
 				switch data[0] {
 				case 1:
 					kind := attorney.Kind(data[1:])
@@ -67,6 +68,7 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 					case attorney.GrantPowerOfAttorneyType:
 						if grant := attorney.ParseGrantPowerOfAttorney(data[1:]); grant != nil {
 							if grant.Attorney.Equal(config.Token) {
+								fmt.Printf("Granting access to handle: %+v\n", *grant)
 								if handle, ok := manager.TokenToHandle[grant.Author]; ok {
 									manager.Granted[handle] = grant.Author
 								}
