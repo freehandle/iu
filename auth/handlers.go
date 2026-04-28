@@ -61,25 +61,26 @@ func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, strin
 	}
 	handle := r.FormValue("handle")
 	password := r.FormValue("password")
-	token, ok := s.Granted[handle] //s.Members.Has(handle)
-	if !ok || !s.Check(token, password) {
-		var valid error
-		if token, ok := s.Granted[handle]; ok { //se passou pelo signin
-			if s.Check(token, password) {
-				valid = s.CheckGrant(handle)
-			}
+
+	token, granted := s.Granted[handle]
+	if !granted {
+		if err := s.CheckGrant(handle); err != nil {
+			return nil, handle, fmt.Errorf("credenciais inválidas")
 		}
-		if valid != nil {
-			return nil, handle, fmt.Errorf("pendente de aprovação pelo usuário: %s", valid)
-		} else {
-			token, ok := s.Granted[handle]
-			if ok {
-				s.Members.Invite(handle, token)
-			} else {
-				return nil, handle, fmt.Errorf("erro interno ao recuperar token concedido")
-			}
+		token, granted = s.Granted[handle]
+		if !granted {
+			return nil, handle, fmt.Errorf("credenciais inválidas")
 		}
 	}
+	if !s.Check(token, password) {
+		return nil, handle, fmt.Errorf("credenciais inválidas")
+	}
+
+	if _, ok := s.HandleToToken[handle]; !ok {
+		s.HandleToToken[handle] = token
+		s.TokenToHandle[token] = handle
+	}
+
 	cookie, err := s.CreateSession(handle)
 	return cookie, handle, err
 }

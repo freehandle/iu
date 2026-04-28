@@ -69,7 +69,6 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 					case attorney.GrantPowerOfAttorneyType:
 						if grant := attorney.ParseGrantPowerOfAttorney(data[1:]); grant != nil {
 							if grant.Attorney.Equal(config.Token) {
-								fmt.Printf("Granting access to handle: %+v\n", *grant)
 								if handle, ok := manager.TokenToHandle[grant.Author]; ok {
 									manager.Granted[handle] = grant.Author
 								}
@@ -196,6 +195,8 @@ func (s *SigninManager) OnboardSigner(handle, email, passwd string) bool {
 	fmt.Println("Onboarded user with token:", token.String())
 	s.Set(token, passwd, email)
 	s.Granted[handle] = token
+	s.HandleToToken[handle] = token
+	s.TokenToHandle[token] = handle
 	if response.Status != "existente" {
 		if err := s.Members.Invite(handle, token); err != nil {
 			log.Println("error inviting user to members:", err)

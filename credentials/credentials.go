@@ -254,7 +254,7 @@ func (c *CredentialsMux) ChangePasswordHandler(w http.ResponseWriter, r *http.Re
 
 // SignoutHandler encerra a sessão do usuário e redireciona para "/".
 func (c *CredentialsMux) SignoutHandler(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie(c.Manager.AppName); err == nil {
+	if cookie, err := r.Cookie(c.Manager.CookieName); err == nil {
 		_, token := c.Manager.SessionUser(r)
 		c.Manager.Cookies.Unset(token, cookie.Value)
 	}
