@@ -63,11 +63,10 @@ func (noopGateway) Epoch() uint64      { return 0 }
 
 const (
 	ChainPort  = 7000
-	SafePort   = 4100
-	SafeAPI    = 4101
+	SafePort   = 8089
+	SafeAPI    = 8090
 	SafePasswd = "devpassword"
 )
-
 
 // LocalStack representa o stack de desenvolvimento em execução.
 type LocalStack struct {
@@ -151,13 +150,13 @@ func (s *LocalStack) NovoGerente(ctx context.Context, members auth.Associater, c
 	source := blocksToActions(ctx, s.DataPath)
 	gerente, _ := auth.LaunchManager(ctx, cfg, source)
 
-	gerente.AppName        = members.AppName()
-	gerente.CookieName     = cookieName(members.AppName())
-	gerente.Secure         = false
-	gerente.AppToken       = members.AttorneyToken()
-	gerente.Cookies        = cookies
-	gerente.Credentials    = credentials
-	gerente.Members        = members
+	gerente.AppName = members.AppName()
+	gerente.CookieName = cookieName(members.AppName())
+	gerente.Secure = false
+	gerente.AppToken = members.AttorneyToken()
+	gerente.Cookies = cookies
+	gerente.Credentials = credentials
+	gerente.Members = members
 	gerente.SafeAPIAddress = s.SafeAPIAddress
 
 	// Pre-popula HandleToToken e TokenToHandle diretamente do vault do safe,
