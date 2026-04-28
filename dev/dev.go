@@ -29,7 +29,12 @@ var chainPK = crypto.PrivateKeyFromString("b61b1452f41a62ac20a1cf5136a2c692d7312
 
 // appPK é uma chave estável para o app em dev — garante que GrantPowerOfAttorney
 // gravado nos blocos continue válido entre restarts.
-var appPK = crypto.PrivateKeyFromString("a72b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2")
+var appPK = crypto.PrivateKeyFromSeed([32]byte{
+	0xa7, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0x7a, 0x8b,
+	0x9c, 0x0d, 0x1e, 0x2f, 0x3a, 0x4b, 0x5c, 0x6d,
+	0x7e, 0x8f, 0x9a, 0x0b, 0x1c, 0x2d, 0x3e, 0x4f,
+	0x5a, 0x6b, 0x7c, 0x8d, 0x9e, 0x0f, 0x1a, 0x2b,
+})
 
 // AppDevKey retorna as credenciais estáveis de desenvolvimento do app.
 // Use no main.go do protocolo em vez de crypto.RandomAsymetricKey().
@@ -63,6 +68,7 @@ const (
 	SafePasswd = "devpassword"
 )
 
+
 // LocalStack representa o stack de desenvolvimento em execução.
 type LocalStack struct {
 	// SafeAPIAddress é o endereço HTTP da REST API do safe.
@@ -71,9 +77,22 @@ type LocalStack struct {
 	// ChainToken é o token público do proxy-handles.
 	ChainToken crypto.Token
 
-	dataPath     string
+	// GenesisTime é o instante estimado do epoch 0 (baseado no epoch atual ao iniciar).
+	GenesisTime time.Time
+
+	// BlockInterval é a duração de cada epoch/bloco.
+	BlockInterval time.Duration
+
+	// DataPath é o diretório de persistência (blocos, vault, cookies).
+	DataPath string
+
 	done         chan error
 	safeInstance *safe.Safe
+}
+
+// ChainAddr retorna o endereço TCP do gateway da chain.
+func (s *LocalStack) ChainAddr() string {
+	return fmt.Sprintf("localhost:%d", ChainPort)
 }
 
 // Wait bloqueia até que algum componente do stack encerre.
@@ -114,9 +133,9 @@ func blocksToActions(ctx context.Context, dataPath string) chan []byte {
 // - Emails são impressos no stdout (TesteGmail).
 // - SafeAPIAddress já aponta para o safe local.
 func (s *LocalStack) NovoGerente(ctx context.Context, members auth.Associater, credentials crypto.PrivateKey) (*auth.SigninManager, error) {
-	senhas := auth.NewFilePasswordManager(s.dataPath + "/senhas.dat")
+	senhas := auth.NewFilePasswordManager(s.DataPath + "/senhas.dat")
 
-	cookies, err := auth.OpenCokieStore(s.dataPath + "/cookies.dat")
+	cookies, err := auth.OpenCokieStore(s.DataPath + "/cookies.dat")
 	if err != nil {
 		return nil, fmt.Errorf("dev: could not open cookie store: %v", err)
 	}
@@ -129,7 +148,7 @@ func (s *LocalStack) NovoGerente(ctx context.Context, members auth.Associater, c
 		Templates: auth.MessagesTemplates{},
 	}
 
-	source := blocksToActions(ctx, s.dataPath)
+	source := blocksToActions(ctx, s.DataPath)
 	gerente, _ := auth.LaunchManager(ctx, cfg, source)
 
 	gerente.AppName        = members.AppName()
@@ -231,10 +250,15 @@ func Start(ctx context.Context, dataPath string) (*LocalStack, error) {
 		}
 	}()
 
+	blockInterval := time.Second
+	genesisTime := time.Now().Add(-time.Duration(epoch) * blockInterval)
+
 	return &LocalStack{
 		SafeAPIAddress: fmt.Sprintf("http://localhost:%d", SafeAPI),
 		ChainToken:     chainToken,
-		dataPath:       dataPath,
+		GenesisTime:    genesisTime,
+		BlockInterval:  blockInterval,
+		DataPath:       dataPath,
 		done:           done,
 		safeInstance:   safeInstance,
 	}, nil
