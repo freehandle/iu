@@ -12,22 +12,24 @@ import (
 
 const cookieLifeItemSeconds = 60 * 60 * 24 * 7 // 1 week
 
-func newCookie(name, value string) *http.Cookie {
+func (s *SigninManager) newCookie(value string) *http.Cookie {
 	return &http.Cookie{
-		Name:     name,
+		Name:     s.CookieName,
 		Value:    url.QueryEscape(value),
+		Path:     "/",
 		MaxAge:   cookieLifeItemSeconds,
-		Secure:   true,
+		Secure:   s.Secure,
 		HttpOnly: true,
 	}
 }
 
 func (s *SigninManager) SessionUser(r *http.Request) (string, crypto.Token) {
-	cookie, err := r.Cookie(s.AppName)
+	cookie, err := r.Cookie(s.CookieName)
 	if err != nil {
 		return "", crypto.ZeroToken
 	}
-	if token, ok := s.Cookies.Get(cookie.Value); ok {
+	value, _ := url.QueryUnescape(cookie.Value)
+	if token, ok := s.Cookies.Get(value); ok {
 		if handle, ok := s.TokenToHandle[token]; ok {
 			return handle, token
 		}
@@ -50,7 +52,7 @@ func (s *SigninManager) CreateSession(handle string) (*http.Cookie, error) {
 	}
 	cookie := hex.EncodeToString(seed)
 	s.Cookies.Set(token, cookie, 0)
-	return newCookie(s.AppName, cookie), nil
+	return s.newCookie(cookie), nil
 }
 
 func (s *SigninManager) CredentialsHandler(r *http.Request) (*http.Cookie, string, error) {

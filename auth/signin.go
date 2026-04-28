@@ -142,13 +142,14 @@ type DefaultAssociater struct {
 }
 
 type SigninManager struct {
-	Epoch     uint64
-	AppName   string
-	AppToken  crypto.Token
-	Passwords PasswordManager
-	Cookies   *CookieStore
-	Mail      *SMTPManager
-	//Gateway       Gateway
+	Epoch          uint64
+	AppName        string
+	CookieName     string // nome do cookie de sessão (sem espaços)
+	Secure         bool   // false em dev (HTTP), true em prod (HTTPS)
+	AppToken       crypto.Token
+	Passwords      PasswordManager
+	Cookies        *CookieStore
+	Mail           *SMTPManager
 	Granted        map[string]crypto.Token
 	Credentials    crypto.PrivateKey
 	Members        Associater
