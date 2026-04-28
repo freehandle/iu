@@ -29,7 +29,7 @@ type Attorney interface {
 
 type Gateway interface {
 	Send(action []byte)
-	Epoch() uint64
+	//Epoch() uint64
 }
 
 type ManagerConfig struct {
@@ -43,7 +43,7 @@ type ManagerConfig struct {
 
 func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte) (*SigninManager, chan []byte) {
 	forward := make(chan []byte, 1)
-	manager := NewSigninManager(config.Token, config.Passwords, config.Mail, config.Gateway, config.Templates)
+	manager := NewSigninManager(config.Token, config.Passwords, config.Mail, config.Templates)
 	go func() {
 		for {
 			select {
@@ -51,6 +51,7 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 				close(forward)
 				return
 			case data, ok := <-source:
+				fmt.Println("instrucao...", data)
 				if !ok {
 					close(forward)
 					return
@@ -100,11 +101,7 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 	return manager, forward
 }
 
-func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer, gateway Gateway, templates MessagesTemplates) *SigninManager {
-	if gateway == nil {
-		log.Print("PANIC BUG: NewSigninManager called with nil gateway ")
-		return nil
-	}
+func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer, templates MessagesTemplates) *SigninManager {
 	return &SigninManager{
 		//pending:   make([]*Signerin, 0),
 		Passwords: passwords,

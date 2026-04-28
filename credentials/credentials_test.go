@@ -74,7 +74,7 @@ func novoTemplates(t *testing.T) *template.Template {
 // novoMux cria um CredentialsMux de teste sem log de convites.
 func novoMux(t *testing.T, manager *auth.SigninManager) *credentials.CredentialsMux {
 	t.Helper()
-	return credentials.New(manager, novoTemplates(t), "http://localhost", false, "")
+	return credentials.New(manager, map[string]string{}, novoTemplates(t), "http://localhost", false, "")
 }
 
 // --- testes do InviteLog ---
@@ -544,7 +544,7 @@ func TestInviteLogIntegrado(t *testing.T) {
 	manager.Cookies.Set(inviterToken, cookieVal, 0)
 
 	logPath := filepath.Join(t.TempDir(), "convites.txt")
-	mux := credentials.New(manager, novoTemplates(t), "http://localhost", false, logPath)
+	mux := credentials.New(manager, map[string]string{}, novoTemplates(t), "http://localhost", false, logPath)
 
 	// --- passo 1: gera convite ---
 	reqInvite := httptest.NewRequest(http.MethodGet, "/invite", nil)
