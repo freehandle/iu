@@ -148,7 +148,7 @@ func (s *LocalStack) NovoGerente(ctx context.Context, members auth.Associater, c
 	}
 
 	source := blocksToActions(ctx, s.DataPath)
-	gerente, _ := auth.LaunchManager(ctx, cfg, source)
+	gerente, _, _ := auth.LaunchManager(ctx, cfg, source)
 
 	gerente.AppName = members.AppName()
 	gerente.CookieName = cookieName(members.AppName())

@@ -41,19 +41,41 @@ type ManagerConfig struct {
 	Source    chan []byte
 }
 
-func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte) (*SigninManager, chan []byte) {
+// ActionType discriminates the kind of identity event published on the events
+// channel returned by LaunchManager.
+type ActionType uint8
+
+const (
+	Join   ActionType = 1
+	Grant  ActionType = 2
+	Revoke ActionType = 3
+)
+
+// IdentityEvent is a parsed identity action (JoinNetwork / Grant / Revoke)
+// already filtered for this app's attorney token. Consumers receive it on the
+// events channel returned by LaunchManager and don't need to re-parse bytes.
+type IdentityEvent struct {
+	Action ActionType
+	Handle string
+	Token  crypto.Token
+}
+
+func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte) (*SigninManager, chan []byte, chan IdentityEvent) {
 	forward := make(chan []byte, 1)
+	events := make(chan IdentityEvent, 1)
 	manager := NewSigninManager(config.Token, config.Passwords, config.Mail, config.Templates)
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				close(forward)
+				close(events)
 				return
 			case data, ok := <-source:
 				fmt.Println("instrucao...", data)
 				if !ok {
 					close(forward)
+					close(events)
 					return
 				}
 				fmt.Println("instrucao")
@@ -65,12 +87,14 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 						if join := attorney.ParseJoinNetwork(data[1:]); join != nil {
 							manager.HandleToToken[join.Handle] = join.Author
 							manager.TokenToHandle[join.Author] = join.Handle
+							events <- IdentityEvent{Action: Join, Handle: join.Handle, Token: join.Author}
 						}
 					case attorney.GrantPowerOfAttorneyType:
 						if grant := attorney.ParseGrantPowerOfAttorney(data[1:]); grant != nil {
 							if grant.Attorney.Equal(config.Token) {
 								if handle, ok := manager.TokenToHandle[grant.Author]; ok {
 									manager.Granted[handle] = grant.Author
+									events <- IdentityEvent{Action: Grant, Handle: handle, Token: grant.Author}
 								}
 							}
 						}
@@ -79,6 +103,7 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 							if revoke.Attorney.Equal(config.Token) {
 								if handle, ok := manager.TokenToHandle[revoke.Author]; ok {
 									delete(manager.Granted, handle)
+									events <- IdentityEvent{Action: Revoke, Handle: handle, Token: revoke.Author}
 								}
 							}
 						}
@@ -97,7 +122,7 @@ func LaunchManager(ctx context.Context, config ManagerConfig, source chan []byte
 			}
 		}
 	}()
-	return manager, forward
+	return manager, forward, events
 }
 
 func NewSigninManager(token crypto.Token, passwords PasswordManager, mail Mailer, templates MessagesTemplates) *SigninManager {
